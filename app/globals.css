@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 0%;
+  --foreground: 30 33% 83%;
+  --card: 0 0% 7%;
+  --card-foreground: 30 33% 83%;
+  --popover: 0 0% 7%;
+  --popover-foreground: 30 33% 83%;
+  --primary: 25 75% 31%;
+  --primary-foreground: 30 33% 83%;
+  --secondary: 0 0% 15%;
+  --secondary-foreground: 30 33% 83%;
+  --muted: 0 0% 15%;
+  --muted-foreground: 30 33% 83%;
+  --accent: 0 0% 15%;
+  --accent-foreground: 30 33% 83%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 30 33% 83%;
+  --border: 25 75% 31%;
+  --input: 0 0% 15%;
+  --ring: 25 75% 31%;
+  --radius: 0.5rem;
+}
+
+body {
+  @apply bg-black text-[#d5bdaf];
+  overscroll-behavior: none;
+}
+
+/* Hide scrollbar */
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* For Firefox */
+html {
+  scrollbar-width: none;
+}
+
+/* Prevent default scrolling */
+html,
+body {
+  overflow: hidden;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Custom font styles for the animated title */
+.font-cursive {
+  font-family: "Brush Script MT", cursive;
+}
+
+.font-fantasy {
+  font-family: "Copperplate", fantasy;
+}
+
+/* Safe area insets for notched iPhones */
+.px-safe {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
