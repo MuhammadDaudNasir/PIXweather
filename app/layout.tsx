@@ -3,6 +3,8 @@ import "./globals.css"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "@/components/toaster"
+import CustomCursor from "@/components/custom-cursor"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -51,7 +53,9 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+          <CustomCursor />
           {children}
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

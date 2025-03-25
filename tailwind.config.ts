@@ -19,7 +19,11 @@ const config = {
       },
     },
     extend: {
+      screens: {
+        xs: "480px", // Add extra small breakpoint
+      },
       fontSize: {
+        xxs: ["0.625rem", { lineHeight: "0.75rem" }], // Add extra small font size
         xs: ["0.75rem", { lineHeight: "1rem" }],
         sm: ["0.875rem", { lineHeight: "1.25rem" }],
         base: ["1rem", { lineHeight: "1.5rem" }],
@@ -96,6 +100,11 @@ const config = {
       },
       backdropBlur: {
         xs: "2px",
+      },
+      spacing: {
+        "0.5": "0.125rem", // 2px
+        "1.5": "0.375rem", // 6px
+        "2.5": "0.625rem", // 10px
       },
     },
   },

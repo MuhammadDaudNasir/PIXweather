@@ -6,10 +6,12 @@ import { motion } from "framer-motion"
 export default function CustomCursor() {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
   const [isHovering, setIsHovering] = useState(false)
+  const [isVisible, setIsVisible] = useState(false)
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       setMousePosition({ x: e.clientX, y: e.clientY })
+      if (!isVisible) setIsVisible(true)
     }
 
     const handleMouseOver = (e: MouseEvent) => {
@@ -17,7 +19,8 @@ export default function CustomCursor() {
         (e.target as HTMLElement).tagName === "BUTTON" ||
         (e.target as HTMLElement).tagName === "A" ||
         (e.target as HTMLElement).closest("button") ||
-        (e.target as HTMLElement).closest("a")
+        (e.target as HTMLElement).closest("a") ||
+        (e.target as HTMLElement).classList.contains("cursor-pointer")
       ) {
         setIsHovering(true)
       } else {
@@ -25,14 +28,20 @@ export default function CustomCursor() {
       }
     }
 
+    const handleMouseLeave = () => {
+      setIsVisible(false)
+    }
+
     window.addEventListener("mousemove", handleMouseMove)
     document.addEventListener("mouseover", handleMouseOver)
+    document.addEventListener("mouseleave", handleMouseLeave)
 
     return () => {
       window.removeEventListener("mousemove", handleMouseMove)
       document.removeEventListener("mouseover", handleMouseOver)
+      document.removeEventListener("mouseleave", handleMouseLeave)
     }
-  }, [])
+  }, [isVisible])
 
   // Only show custom cursor on desktop
   const isMobile = typeof window !== "undefined" ? window.innerWidth <= 768 : false
@@ -47,6 +56,7 @@ export default function CustomCursor() {
           x: mousePosition.x - 12,
           y: mousePosition.y - 12,
           scale: isHovering ? 1.5 : 1,
+          opacity: isVisible ? 1 : 0,
         }}
         transition={{
           type: "spring",
@@ -54,6 +64,7 @@ export default function CustomCursor() {
           stiffness: 800,
           damping: 30,
           scale: { duration: 0.15 },
+          opacity: { duration: 0.2 },
         }}
       />
       <motion.div
@@ -61,12 +72,14 @@ export default function CustomCursor() {
         animate={{
           x: mousePosition.x - 64,
           y: mousePosition.y - 64,
+          opacity: isVisible ? 0.2 : 0,
         }}
         transition={{
           type: "spring",
           mass: 0.5,
           stiffness: 200,
           damping: 50,
+          opacity: { duration: 0.2 },
         }}
       />
     </>

@@ -28,6 +28,7 @@
 body {
   @apply bg-black text-[#d5bdaf];
   overscroll-behavior: none;
+  touch-action: none; /* Prevent browser handling of touch gestures */
 }
 
 /* Hide scrollbar */
@@ -70,5 +71,169 @@ body {
 
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Hide scrollbar but allow scrolling */
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+
+/* Custom cursor styles */
+* {
+  cursor: none !important;
+}
+
+@media (max-width: 768px) {
+  * {
+    cursor: auto !important;
+  }
+}
+
+/* Responsive scaling for all screens */
+html {
+  font-size: 16px; /* Base font size */
+}
+
+@media (max-width: 1280px) {
+  html {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 1024px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 768px) {
+  html {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 640px) {
+  html {
+    font-size: 12px;
+  }
+
+  /* Smaller text on very small screens */
+  .text-3xl {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+
+  .text-2xl {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+
+  .text-xl {
+    font-size: 1.125rem;
+    line-height: 1.5rem;
+  }
+
+  .text-lg {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+
+  /* Reduce padding on small screens */
+  .p-6 {
+    padding: 0.75rem;
+  }
+
+  .p-4 {
+    padding: 0.5rem;
+  }
+
+  /* Fix content overflow */
+  .overflow-y-auto {
+    max-height: calc(100vh - 7rem);
+  }
+}
+
+/* Ensure line clamping works */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Fix for UV Map component */
+.uv-map-container {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Fix for weather cards */
+.weather-card {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* Prevent text overflow */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+span,
+div {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  -ms-word-break: break-all;
+  word-break: break-word;
+}
+
+/* Compact design for small screens */
+@media (max-width: 480px) {
+  .compact-ui .card-content {
+    padding: 0.5rem;
+  }
+
+  .compact-ui .card {
+    margin-bottom: 0.5rem;
+  }
+
+  .compact-ui .gap-4 {
+    gap: 0.5rem;
+  }
+
+  .compact-ui .space-y-4 {
+    margin-top: 0.5rem;
+  }
+
+  .compact-ui .rounded-lg {
+    border-radius: 0.375rem;
+  }
+}
+
+/* Adaptive spacing */
+.adaptive-p {
+  padding: clamp(0.5rem, 2vw, 1.5rem);
+}
+
+.adaptive-m {
+  margin: clamp(0.5rem, 2vw, 1.5rem);
+}
+
+.adaptive-gap {
+  gap: clamp(0.5rem, 1.5vw, 1rem);
 }
 

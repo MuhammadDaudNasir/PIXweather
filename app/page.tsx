@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Search, ArrowDown, Info, Share2, Newspaper, RefreshCw } from "lucide-react"
+import { Search, ArrowDown, Info, Share2, Newspaper, RefreshCw, Heart } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import LocationCard from "@/components/location-card"
 import LoadingState from "@/components/loading-state"
@@ -13,6 +13,11 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import AnimatedTitle from "@/components/animated-title"
 import Image from "next/image"
+
+// Add this function at the top of the file, outside the component
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
 
 export default function HomePage() {
   const [locations, setLocations] = useState([])
@@ -25,8 +30,17 @@ export default function HomePage() {
   const [infoModalOpen, setInfoModalOpen] = useState(false)
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const [isSearchMode, setIsSearchMode] = useState(false)
+  const [detectedLocation, setDetectedLocation] = useState(null)
   const containerRef = useRef(null)
   const loadMoreThreshold = 2 // Load more when user is this many items from the end
+
+  // Add these refs for scroll handling
+  const scrollTimeoutRef = useRef(null)
+  const lastScrollTimeRef = useRef(0)
+  const scrollCooldownRef = useRef(false)
+  const accumulatedDeltaRef = useRef(0)
+
+  // Then update the fetchLocationsData function inside the HomePage component:
 
   const fetchLocationsData = async (isInitial = true) => {
     if (isInitial) {
@@ -36,7 +50,7 @@ export default function HomePage() {
     }
 
     // Get random locations
-    const randomLocations = getRandomLocations(5)
+    const randomLocations = getRandomLocations(isInitial ? 3 : 2) // Reduce the number of locations to fetch
 
     // If initial load, replace locations, otherwise append
     if (isInitial) {
@@ -46,30 +60,53 @@ export default function HomePage() {
     }
 
     try {
-      // Fetch weather and images for all locations in parallel
-      const weatherPromises = randomLocations.map((location) =>
-        fetch(`/api/weather?query=${location.name}`).then((res) => res.json()),
-      )
+      // Fetch weather and images for all locations with throttling
+      for (let i = 0; i < randomLocations.length; i++) {
+        const location = randomLocations[i]
 
-      const imagesPromises = randomLocations.map((location) =>
-        fetch(`/api/images?query=${location.name}`).then((res) => res.json()),
-      )
+        // Add a delay between requests to avoid rate limiting
+        if (i > 0) {
+          await delay(1000) // 1 second delay between requests
+        }
 
-      const weatherResults = await Promise.all(weatherPromises)
-      const imagesResults = await Promise.all(imagesPromises)
+        try {
+          const weatherResponse = await fetch(`/api/weather?query=${location.name}`)
 
-      // Create lookup objects for weather and images
-      const newWeatherLookup = {}
-      const newImagesLookup = {}
+          // Handle rate limiting
+          if (weatherResponse.status === 429) {
+            console.log("Rate limited, waiting before retry...")
+            await delay(2000) // Wait 2 seconds before retry
+            continue // Skip this iteration and try the next location
+          }
 
-      randomLocations.forEach((location, index) => {
-        newWeatherLookup[location.name] = weatherResults[index]
-        newImagesLookup[location.name] = imagesResults[index]
-      })
+          const weatherData = await weatherResponse.json()
 
-      // Update state - merge with existing data if not initial load
-      setWeatherData((prev) => (isInitial ? newWeatherLookup : { ...prev, ...newWeatherLookup }))
-      setImagesData((prev) => (isInitial ? newImagesLookup : { ...prev, ...newImagesLookup }))
+          // If there's an error in the response, log it but continue
+          if (weatherData.error) {
+            console.error(`Error fetching weather for ${location.name}:`, weatherData.error)
+            continue
+          }
+
+          // Update weather data for this location
+          setWeatherData((prev) => ({
+            ...prev,
+            [location.name]: weatherData,
+          }))
+
+          // Fetch images for this location
+          const imagesResponse = await fetch(`/api/images?query=${location.name}`)
+          const imagesData = await imagesResponse.json()
+
+          // Update images data for this location
+          setImagesData((prev) => ({
+            ...prev,
+            [location.name]: imagesData,
+          }))
+        } catch (error) {
+          console.error(`Error fetching data for ${location.name}:`, error)
+          // Continue with the next location
+        }
+      }
     } catch (error) {
       console.error("Error fetching data:", error)
     } finally {
@@ -81,7 +118,7 @@ export default function HomePage() {
     }
   }
 
-  const handleSearch = (e) => {
+  const handleSearch = async (e) => {
     e.preventDefault()
     if (searchQuery.trim()) {
       setLoading(true)
@@ -97,21 +134,45 @@ export default function HomePage() {
 
       setLocations([searchLocation])
 
-      // Fetch data for the searched location
-      Promise.all([
-        fetch(`/api/weather?query=${searchQuery}`).then((res) => res.json()),
-        fetch(`/api/images?query=${searchQuery}`).then((res) => res.json()),
-      ])
-        .then(([weatherData, imagesData]) => {
-          setWeatherData({ [searchQuery]: weatherData })
-          setImagesData({ [searchQuery]: imagesData })
-          setCurrentIndex(0)
-          setLoading(false)
+      try {
+        // Fetch weather data first
+        const weatherResponse = await fetch(`/api/weather?query=${searchQuery}`)
+
+        // Handle non-OK responses
+        if (!weatherResponse.ok) {
+          if (weatherResponse.status === 429) {
+            throw new Error("Too many requests. Please try again later.")
+          }
+          throw new Error(`Weather API error: ${weatherResponse.statusText}`)
+        }
+
+        const weatherData = await weatherResponse.json()
+
+        // Check for errors in the response
+        if (weatherData.error) {
+          throw new Error(weatherData.error)
+        }
+
+        // Fetch images data
+        const imagesResponse = await fetch(`/api/images?query=${searchQuery}`)
+        const imagesData = await imagesResponse.json()
+
+        // Update state
+        setWeatherData({ [searchQuery]: weatherData })
+        setImagesData({ [searchQuery]: imagesData })
+        setCurrentIndex(0)
+      } catch (error) {
+        console.error("Error fetching data:", error)
+        // Show a fallback location card with error message
+        setWeatherData({
+          [searchQuery]: {
+            error: true,
+            errorMessage: error.message || "Failed to load weather data",
+          },
         })
-        .catch((error) => {
-          console.error("Error fetching data:", error)
-          setLoading(false)
-        })
+      } finally {
+        setLoading(false)
+      }
     }
   }
 
@@ -126,6 +187,38 @@ export default function HomePage() {
     setIsSearchMode(false)
     setCurrentIndex(0)
     fetchLocationsData()
+  }
+
+  const handleLocationDetection = async (location) => {
+    try {
+      setLoading(true)
+
+      // Create a custom location object
+      const customLocation = {
+        name: location.name,
+        country: "Detected Location",
+        continent: "Current Position",
+        description: `This is your current location. The weather information is based on coordinates near ${location.name}.`,
+      }
+
+      setLocations([customLocation, ...locations])
+
+      // Fetch weather and images for the detected location
+      const [weatherData, imagesData] = await Promise.all([
+        fetch(`/api/weather?query=${location.name}&forecast=true&aqi=true&alerts=true`).then((res) => res.json()),
+        fetch(`/api/images?query=${location.name}`).then((res) => res.json()),
+      ])
+
+      // Update state
+      setWeatherData((prev) => ({ [location.name]: weatherData, ...prev }))
+      setImagesData((prev) => ({ [location.name]: imagesData, ...prev }))
+      setCurrentIndex(0)
+      setDetectedLocation(location)
+    } catch (error) {
+      console.error("Error setting up detected location:", error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   // Check if we need to load more data
@@ -162,111 +255,208 @@ export default function HomePage() {
     checkLoadMore()
   }, [currentIndex])
 
-  // Handle wheel events for custom scrolling
+  // Improved wheel event handler with debouncing and thresholds
   useEffect(() => {
     const handleWheel = (e) => {
-      if (loading) return
+      if (loading || scrollCooldownRef.current) return
 
-      // Determine scroll direction
-      if (e.deltaY > 0 && currentIndex < locations.length - 1) {
-        // Scrolling down
-        setCurrentIndex((prev) => prev + 1)
-      } else if (e.deltaY < 0 && currentIndex > 0) {
-        // Scrolling up
-        setCurrentIndex((prev) => prev - 1)
+      // Prevent default to avoid browser scrolling
+      e.preventDefault()
+
+      // Accumulate delta for smoother scrolling
+      accumulatedDeltaRef.current += e.deltaY
+
+      // Clear any existing timeout
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current)
       }
+
+      // Set a timeout to process the scroll after a short delay
+      scrollTimeoutRef.current = setTimeout(() => {
+        // Check if we've accumulated enough delta to trigger a page change
+        const threshold = 100 // Higher threshold for trackpads
+
+        if (accumulatedDeltaRef.current > threshold && currentIndex < locations.length - 1) {
+          // Scrolling down
+          setCurrentIndex((prev) => prev + 1)
+          // Set cooldown to prevent rapid scrolling
+          scrollCooldownRef.current = true
+          setTimeout(() => {
+            scrollCooldownRef.current = false
+          }, 700) // 700ms cooldown between page changes
+        } else if (accumulatedDeltaRef.current < -threshold && currentIndex > 0) {
+          // Scrolling up
+          setCurrentIndex((prev) => prev - 1)
+          // Set cooldown to prevent rapid scrolling
+          scrollCooldownRef.current = true
+          setTimeout(() => {
+            scrollCooldownRef.current = false
+          }, 700) // 700ms cooldown between page changes
+        }
+
+        // Reset accumulated delta
+        accumulatedDeltaRef.current = 0
+      }, 50) // Short delay to collect scroll events
     }
 
     const container = containerRef.current
     if (container) {
-      container.addEventListener("wheel", handleWheel)
+      container.addEventListener("wheel", handleWheel, { passive: false })
     }
 
     return () => {
       if (container) {
         container.removeEventListener("wheel", handleWheel)
       }
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current)
+      }
+    }
+  }, [currentIndex, locations.length, loading])
+
+  // Add touch event handlers for mobile swipe
+  useEffect(() => {
+    let touchStartY = 0
+    let touchEndY = 0
+
+    const handleTouchStart = (e) => {
+      touchStartY = e.touches[0].clientY
+    }
+
+    const handleTouchMove = (e) => {
+      // Prevent default to avoid browser scrolling
+      e.preventDefault()
+    }
+
+    const handleTouchEnd = (e) => {
+      if (loading || scrollCooldownRef.current) return
+
+      touchEndY = e.changedTouches[0].clientY
+
+      // Calculate swipe distance
+      const swipeDistance = touchEndY - touchStartY
+      const swipeThreshold = 80 // Higher threshold for touch
+
+      if (swipeDistance < -swipeThreshold && currentIndex < locations.length - 1) {
+        // Swipe up - go to next
+        setCurrentIndex((prev) => prev + 1)
+        scrollCooldownRef.current = true
+        setTimeout(() => {
+          scrollCooldownRef.current = false
+        }, 700)
+      } else if (swipeDistance > swipeThreshold && currentIndex > 0) {
+        // Swipe down - go to previous
+        setCurrentIndex((prev) => prev - 1)
+        scrollCooldownRef.current = true
+        setTimeout(() => {
+          scrollCooldownRef.current = false
+        }, 700)
+      }
+    }
+
+    const container = containerRef.current
+    if (container) {
+      container.addEventListener("touchstart", handleTouchStart)
+      container.addEventListener("touchmove", handleTouchMove, { passive: false })
+      container.addEventListener("touchend", handleTouchEnd)
+    }
+
+    return () => {
+      if (container) {
+        container.removeEventListener("touchstart", handleTouchStart)
+        container.removeEventListener("touchmove", handleTouchMove)
+        container.removeEventListener("touchend", handleTouchEnd)
+      }
     }
   }, [currentIndex, locations.length, loading])
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-black text-[#d5bdaf]">
+    <div ref={containerRef} className="min-h-screen bg-black text-[#d5bdaf] overflow-hidden">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#3c2a21] bg-black/80 backdrop-blur-md px-safe">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="container mx-auto px-2 xs:px-3 sm:px-4 h-12 xs:h-14 sm:h-16 flex items-center justify-between">
           <div className="flex items-center">
-            <div className="h-7 w-7 mr-1.5 relative flex-shrink-0">
+            <div className="h-5 w-5 xs:h-6 xs:w-6 sm:h-7 sm:w-7 mr-1 xs:mr-1.5 relative flex-shrink-0">
               <Image src="/icons/logo.png" alt="PixWeather Logo" fill className="object-contain" />
             </div>
             <AnimatedTitle />
           </div>
 
-          <form onSubmit={handleSearch} className="relative w-full max-w-md mx-2 hidden sm:block">
+          <form onSubmit={handleSearch} className="relative w-full max-w-xs sm:max-w-md mx-2 hidden sm:block">
             <Input
               type="text"
               placeholder="Search locations..."
-              className="w-full bg-[#121212] border-[#3c2a21] text-[#d5bdaf] pl-10 pr-4 py-2 rounded-full focus:ring-[#8B4513] focus:border-[#8B4513]"
+              className="w-full bg-[#121212] border-[#3c2a21] text-[#d5bdaf] pl-8 pr-3 py-1.5 text-sm rounded-full focus:ring-[#8B4513] focus:border-[#8B4513]"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#8B4513] h-4 w-4" />
+            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-[#8B4513] h-3.5 w-3.5" />
           </form>
 
-          <div className="flex items-center space-x-1.5 sm:space-x-2">
+          <div className="flex items-center space-x-1 sm:space-x-1.5">
             {isSearchMode && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="rounded-full bg-[#3c2a21] text-[#d5bdaf] hover:bg-[#8B4513] h-9 w-9 sm:h-10 sm:w-10"
+                className="rounded-full bg-[#3c2a21] text-[#d5bdaf] hover:bg-[#8B4513] h-7 w-7 xs:h-8 xs:w-8 sm:h-9 sm:w-9"
                 onClick={handleReset}
               >
-                <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5" />
+                <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             )}
+            <Link href="/favorites">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full bg-[#3c2a21] text-[#d5bdaf] hover:bg-[#8B4513] h-7 w-7 xs:h-8 xs:w-8 sm:h-9 sm:w-9"
+              >
+                <Heart className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              </Button>
+            </Link>
             <Link href="/news">
               <Button
                 variant="ghost"
                 size="icon"
-                className="rounded-full bg-[#3c2a21] text-[#d5bdaf] hover:bg-[#8B4513] h-9 w-9 sm:h-10 sm:w-10"
+                className="rounded-full bg-[#3c2a21] text-[#d5bdaf] hover:bg-[#8B4513] h-7 w-7 xs:h-8 xs:w-8 sm:h-9 sm:w-9"
               >
-                <Newspaper className="h-4 w-4 sm:h-5 sm:w-5" />
+                <Newspaper className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             </Link>
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-full bg-[#3c2a21] text-[#d5bdaf] hover:bg-[#8B4513] h-9 w-9 sm:h-10 sm:w-10"
+              className="rounded-full bg-[#3c2a21] text-[#d5bdaf] hover:bg-[#8B4513] h-7 w-7 xs:h-8 xs:w-8 sm:h-9 sm:w-9"
               onClick={handleShare}
             >
-              <Share2 className="h-4 w-4 sm:h-5 sm:w-5" />
+              <Share2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-full bg-[#3c2a21] text-[#d5bdaf] hover:bg-[#8B4513] h-9 w-9 sm:h-10 sm:w-10"
+              className="rounded-full bg-[#3c2a21] text-[#d5bdaf] hover:bg-[#8B4513] h-7 w-7 xs:h-8 xs:w-8 sm:h-9 sm:w-9"
               onClick={() => setInfoModalOpen(true)}
             >
-              <Info className="h-4 w-4 sm:h-5 sm:w-5" />
+              <Info className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </Button>
           </div>
         </div>
 
-        {/* Mobile search bar */}
-        <div className="sm:hidden px-4 pb-2">
+        {/* Mobile search bar - more compact */}
+        <div className="sm:hidden px-2 xs:px-3 pb-1.5">
           <form onSubmit={handleSearch} className="relative w-full">
             <Input
               type="text"
               placeholder="Search locations..."
-              className="w-full bg-[#121212] border-[#3c2a21] text-[#d5bdaf] pl-10 pr-4 py-2 rounded-full focus:ring-[#8B4513] focus:border-[#8B4513] text-sm"
+              className="w-full bg-[#121212] border-[#3c2a21] text-[#d5bdaf] pl-8 pr-3 py-1.5 rounded-full focus:ring-[#8B4513] focus:border-[#8B4513] text-xs"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#8B4513] h-4 w-4" />
+            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-[#8B4513] h-3.5 w-3.5" />
           </form>
         </div>
       </header>
 
-      <main className="pt-16 h-screen">
+      <main className="pt-16 sm:pt-16 h-screen">
         <AnimatePresence mode="wait">
           {loading ? (
             <LoadingState key="loading" />
@@ -291,21 +481,30 @@ export default function HomePage() {
                   >
                     <LocationCard
                       location={location}
-                      weather={weather}
+                      weather={weatherData[location.name]}
                       image={image}
                       onNext={() => {
-                        if (index < locations.length - 1) {
+                        if (index < locations.length - 1 && !scrollCooldownRef.current) {
                           setCurrentIndex(index + 1)
+                          scrollCooldownRef.current = true
+                          setTimeout(() => {
+                            scrollCooldownRef.current = false
+                          }, 700)
                         }
                       }}
                       onPrevious={() => {
-                        if (index > 0) {
+                        if (index > 0 && !scrollCooldownRef.current) {
                           setCurrentIndex(index - 1)
+                          scrollCooldownRef.current = true
+                          setTimeout(() => {
+                            scrollCooldownRef.current = false
+                          }, 700)
                         }
                       }}
                       isLast={index === locations.length - 1}
                       isFirst={index === 0}
                       isLoading={loadingMore && index === locations.length - 1}
+                      onLocationDetected={handleLocationDetection}
                     />
                   </motion.div>
                 )
@@ -365,10 +564,10 @@ export default function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="fixed bottom-0 left-0 right-0 z-40 py-2 bg-black/80 backdrop-blur-md border-t border-[#3c2a21] px-safe">
-        <div className="container mx-auto px-4 flex justify-between items-center">
-          <p className="text-xs sm:text-sm text-[#d5bdaf]">© Muhammad Daud Nasir</p>
-          <p className="text-xs text-[#8B4513]">Powered by Pineapple Technologies LLC</p>
+      <footer className="fixed bottom-0 left-0 right-0 z-40 py-1.5 xs:py-2 bg-black/80 backdrop-blur-md border-t border-[#3c2a21] px-safe">
+        <div className="container mx-auto px-2 xs:px-3 sm:px-4 flex justify-between items-center">
+          <p className="text-[10px] xs:text-xs sm:text-sm text-[#d5bdaf]">© Muhammad Daud Nasir</p>
+          <p className="text-[10px] xs:text-xs text-[#8B4513]">Powered by Pineapple Technologies LLC</p>
         </div>
       </footer>
 
