@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Thermometer, Wind } from "lucide-react"
+import CollapsibleWidget from "@/components/collapsible-widget"
 
 interface HourlyForecastAnimationProps {
   hourlyData: any[]
@@ -61,19 +62,17 @@ export default function HourlyForecastAnimation({ hourlyData, metric }: HourlyFo
   const color = getColor(currentValue)
 
   return (
-    <div className="bg-black/30 backdrop-blur-md rounded-lg p-3 border border-[#3c2a21]/20">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center">
-          {metric === "temp" ? (
-            <Thermometer className="h-4 w-4 mr-2 text-[#8B4513]" />
-          ) : (
-            <Wind className="h-4 w-4 mr-2 text-[#8B4513]" />
-          )}
-          <div className="text-xs text-[#8B4513]">{metric === "temp" ? "Temperature" : "Wind Speed"} Forecast</div>
-        </div>
-        <div className="text-xs text-[#d5bdaf]">{formatTime(currentHour.time)}</div>
-      </div>
-
+    <CollapsibleWidget
+      title={metric === "temp" ? "Temperature Forecast" : "Wind Speed Forecast"}
+      icon={
+        metric === "temp" ? (
+          <Thermometer className="h-3 w-3 xs:h-4 xs:w-4" />
+        ) : (
+          <Wind className="h-3 w-3 xs:h-4 xs:w-4" />
+        )
+      }
+      badge={<div className="text-xs text-[#d5bdaf]">{formatTime(currentHour.time)}</div>}
+    >
       <div className="w-full h-16 relative mb-2">
         <div className="absolute inset-x-0 bottom-0 h-1 bg-gray-700 rounded-full"></div>
 
@@ -118,7 +117,7 @@ export default function HourlyForecastAnimation({ hourlyData, metric }: HourlyFo
             </div>
           ))}
       </div>
-    </div>
+    </CollapsibleWidget>
   )
 }
 

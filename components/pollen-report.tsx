@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Flower, AlertCircle, Info } from "lucide-react"
+import CollapsibleWidget from "@/components/collapsible-widget"
 
 interface PollenReportProps {
   lat: number
@@ -88,17 +89,15 @@ export default function PollenReport({ lat, lon }: PollenReportProps) {
   const overallInfo = getSeverityInfo(pollenData.overall)
 
   return (
-    <div className="bg-black/30 backdrop-blur-md rounded-lg p-3 border border-[#3c2a21]/20">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center">
-          <Flower className="h-4 w-4 mr-2 text-[#8B4513]" />
-          <div className="text-xs text-[#8B4513]">Pollen & Allergens Report</div>
-        </div>
+    <CollapsibleWidget
+      title="Pollen & Allergens Report"
+      icon={<Flower className="h-3 w-3 xs:h-4 xs:w-4" />}
+      badge={
         <div className={`text-xs font-medium px-2 py-0.5 rounded-full ${overallInfo.bgColor} ${overallInfo.color}`}>
           {overallInfo.text}
         </div>
-      </div>
-
+      }
+    >
       <div className="grid grid-cols-3 gap-2">
         {[
           { name: "Grass", value: pollenData.grass, icon: "🌾" },
@@ -124,7 +123,7 @@ export default function PollenReport({ lat, lon }: PollenReportProps) {
           </p>
         </div>
       </div>
-    </div>
+    </CollapsibleWidget>
   )
 }
 

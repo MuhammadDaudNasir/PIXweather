@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion"
 import { Wind } from "lucide-react"
+import CollapsibleWidget from "@/components/collapsible-widget"
 
 interface AirQualityProps {
   aqi: number
@@ -64,19 +65,11 @@ export default function AirQuality({ aqi }: AirQualityProps) {
   const percentage = Math.min((aqi / 500) * 100, 100)
 
   return (
-    <div className="bg-black/30 backdrop-blur-md rounded-lg p-3 border border-[#3c2a21]/20">
-      <div className="flex items-center mb-2">
-        <Wind className="h-4 w-4 mr-2 text-[#8B4513]" />
-        <div>
-          <div className="text-xs text-[#8B4513]">Air Quality</div>
-          <div className="text-sm text-[#d5bdaf] flex items-center">
-            <span className={`font-medium ${textColor}`}>{level}</span>
-            <span className="mx-1">•</span>
-            <span>AQI {aqi}</span>
-          </div>
-        </div>
-      </div>
-
+    <CollapsibleWidget
+      title="Air Quality"
+      icon={<Wind className="h-3 w-3 xs:h-4 xs:w-4" />}
+      badge={<span className={`text-xs font-medium ${textColor}`}>{level}</span>}
+    >
       <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
         <motion.div
           className={`h-full ${color}`}
@@ -87,7 +80,7 @@ export default function AirQuality({ aqi }: AirQualityProps) {
       </div>
 
       <p className="text-xs text-[#d5bdaf]/70 mt-2">{description}</p>
-    </div>
+    </CollapsibleWidget>
   )
 }
 

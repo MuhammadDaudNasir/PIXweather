@@ -3,8 +3,8 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
 import { Lightbulb, Umbrella, Thermometer, Wind, Sun, Droplets, CloudSnow } from "lucide-react"
+import CollapsibleWidget from "@/components/collapsible-widget"
 
 interface WeatherRecommendationProps {
   weather: any
@@ -90,15 +90,16 @@ export default function WeatherRecommendation({ weather }: WeatherRecommendation
   if (!recommendation) return null
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="bg-black/30 backdrop-blur-md rounded-lg p-3 border border-[#3c2a21]/20 flex items-center"
+    <CollapsibleWidget
+      title="Weather Recommendation"
+      icon={<Lightbulb className="h-3 w-3 xs:h-4 xs:w-4" />}
+      isDefaultOpen={true}
     >
-      <div className={`mr-3 ${recommendation.color}`}>{recommendation.icon}</div>
-      <p className="text-sm text-[#d5bdaf]">{recommendation.text}</p>
-    </motion.div>
+      <div className="flex items-center">
+        <div className={`mr-2 ${recommendation.color}`}>{recommendation.icon}</div>
+        <p className="text-xs xs:text-sm text-[#d5bdaf]">{recommendation.text}</p>
+      </div>
+    </CollapsibleWidget>
   )
 }
 

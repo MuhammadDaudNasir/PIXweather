@@ -63,10 +63,10 @@ export default function FavoritesButton({ location }: FavoritesButtonProps) {
         isFavorite
           ? "bg-[#8B4513] text-white hover:bg-[#6d3710]"
           : "bg-black/40 backdrop-blur-md border border-[#3c2a21]/30 text-[#d5bdaf] hover:bg-[#3c2a21]/50"
-      } w-8 h-8 xs:w-9 xs:h-9 sm:w-10 sm:h-10`}
+      } w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 md:w-10 md:h-10`}
     >
       <motion.div animate={isFavorite ? { scale: [1, 1.3, 1] } : {}} transition={{ duration: 0.3 }}>
-        <Heart className={`h-4 w-4 ${isFavorite ? "fill-white" : ""}`} />
+        <Heart className={`h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4 ${isFavorite ? "fill-white" : ""}`} />
       </motion.div>
     </Button>
   )

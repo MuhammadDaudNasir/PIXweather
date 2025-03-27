@@ -3,32 +3,19 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
-import {
-  MapPin,
-  Cloud,
-  Wind,
-  Droplets,
-  Thermometer,
-  ChevronDown,
-  ChevronUp,
-  RefreshCw,
-  Calendar,
-  AlertTriangle,
-} from "lucide-react"
+import { MapPin, ChevronDown, ChevronUp, RefreshCw, Calendar, AlertTriangle, Sun, Newspaper } from "lucide-react"
 import FavoritesButton from "@/components/favorites-button"
 import WeatherForecast from "@/components/weather-forecast"
 import WeatherAnimation from "@/components/weather-animation"
 import DynamicBackground from "@/components/dynamic-background"
 import WeatherAlert from "@/components/weather-alert"
-import AirQuality from "@/components/air-quality"
-import WeatherRecommendation from "@/components/weather-recommendation"
 import HourlyForecastAnimation from "@/components/hourly-forecast-animation"
 import WeatherImpactNews from "@/components/weather-impact-news"
-import WeatherTimeline from "@/components/weather-timeline"
 import GeolocationDetector from "@/components/geolocation-detector"
 import PollenReport from "@/components/pollen-report"
 import CrowdsourcedWeather from "@/components/crowdsourced-weather"
 import UVMap from "@/components/uv-map"
+import SwipeableWidgets from "@/components/swipeable-widgets"
 
 interface LocationCardProps {
   location: {
@@ -66,6 +53,7 @@ export default function LocationCard({
   const [detectedLocation, setDetectedLocation] = useState<any>(null)
   const [dragEnabled, setDragEnabled] = useState(true)
   const [isSmallScreen, setIsSmallScreen] = useState(false)
+  const [activeWidgetIndex, setActiveWidgetIndex] = useState(0)
 
   // Check if there's an error in the weather data
   const hasError = weather?.error === true
@@ -157,6 +145,105 @@ export default function LocationCard({
   // Get alerts if available
   const alerts = weatherData?.alerts?.alert || []
 
+  const getWidgets = () => {
+    if (!weather || !weather.current) return []
+
+    return [
+      {
+        id: "location-info",
+        title: "Location Information",
+        icon: <MapPin className="h-4 w-4 mr-2" />,
+        component: (
+          <div className="p-4 bg-black/20 rounded-b-lg">
+            <div className="flex flex-col space-y-4">
+              <div className="flex items-center space-x-3">
+                <div className="h-12 w-12 bg-[#8B4513]/20 rounded-full flex items-center justify-center">
+                  <MapPin className="h-6 w-6 text-[#8B4513]" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-[#d5bdaf]">{location.name}</h3>
+                  <p className="text-sm text-[#d5bdaf]/70">{location.country}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-black/30 p-3 rounded-lg">
+                  <p className="text-xs text-[#8B4513]">Region</p>
+                  <p className="text-sm text-[#d5bdaf]">{weather.location?.region || location.continent}</p>
+                </div>
+                <div className="bg-black/30 p-3 rounded-lg">
+                  <p className="text-xs text-[#8B4513]">Local Time</p>
+                  <p className="text-sm text-[#d5bdaf]">{weather.location?.localtime || "N/A"}</p>
+                </div>
+                <div className="bg-black/30 p-3 rounded-lg">
+                  <p className="text-xs text-[#8B4513]">Latitude</p>
+                  <p className="text-sm text-[#d5bdaf]">{weather.location?.lat || "N/A"}</p>
+                </div>
+                <div className="bg-black/30 p-3 rounded-lg">
+                  <p className="text-xs text-[#8B4513]">Longitude</p>
+                  <p className="text-sm text-[#d5bdaf]">{weather.location?.lon || "N/A"}</p>
+                </div>
+              </div>
+
+              <div className="bg-black/30 p-3 rounded-lg">
+                <p className="text-xs text-[#8B4513] mb-1">Current Weather</p>
+                <div className="flex items-center">
+                  {weather.current && (
+                    <>
+                      <img
+                        src={weather.current.condition?.icon || "/placeholder.svg"}
+                        alt={weather.current.condition?.text || "Weather"}
+                        className="w-10 h-10 mr-3"
+                      />
+                      <div>
+                        <p className="text-lg font-bold text-[#d5bdaf]">{weather.current.temp_c}°C</p>
+                        <p className="text-sm text-[#d5bdaf]/70">{weather.current.condition?.text}</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <p className="text-xs text-[#d5bdaf]/50 text-center">Swipe left or right to see more information</p>
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: "uv-forecast",
+        title: "UV Forecast",
+        icon: <Sun className="h-4 w-4 mr-2" />,
+        component:
+          weather && weather.current && weather.location ? (
+            <UVMap uvIndex={weather.current.uv} lat={weather.location.lat} lon={weather.location.lon} />
+          ) : (
+            <div className="flex items-center justify-center h-64 bg-black/20 rounded-lg">
+              <RefreshCw className="h-6 w-6 text-[#8B4513] animate-spin" />
+            </div>
+          ),
+      },
+      {
+        id: "weather-news",
+        title: "Weather News",
+        icon: <Newspaper className="h-4 w-4 mr-2" />,
+        component: <WeatherImpactNews locationName={location.name} />,
+      },
+      {
+        id: "forecast",
+        title: "7-Day Forecast",
+        icon: <Calendar className="h-4 w-4 mr-2" />,
+        component:
+          weather && weather.forecast ? (
+            <WeatherForecast forecast={weather} locationName={location.name} />
+          ) : (
+            <div className="flex items-center justify-center h-64 bg-black/20 rounded-lg">
+              <RefreshCw className="h-6 w-6 text-[#8B4513] animate-spin" />
+            </div>
+          ),
+      },
+    ]
+  }
+
   return (
     <motion.div
       className="relative w-full h-full"
@@ -175,13 +262,13 @@ export default function LocationCard({
 
         {/* Content */}
         <div
-          className={`relative z-10 h-full flex flex-col justify-end p-2 xs:p-3 sm:p-4 pb-16 sm:pb-20 overflow-y-auto scrollbar-hide compact-ui`}
+          className={`relative z-10 h-full flex flex-col justify-end p-1.5 xs:p-2 sm:p-3 md:p-4 pb-12 xs:pb-14 sm:pb-16 md:pb-20 overflow-y-auto scrollbar-hide compact-ui`}
         >
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-black/40 backdrop-blur-xl rounded-xl p-3 xs:p-4 sm:p-5 max-w-2xl mx-auto w-full border border-[#3c2a21]/30 space-y-3 xs:space-y-4"
+            className="bg-black/40 backdrop-blur-xl rounded-xl p-2 xs:p-3 sm:p-4 md:p-5 max-w-xl mx-auto w-full border border-[#3c2a21]/30 space-y-2 xs:space-y-3 sm:space-y-4 transform scale-[0.85] origin-top"
           >
             {/* Geolocation detector - only show on the first card */}
             {isFirst && !detectedLocation && <GeolocationDetector onLocationDetected={handleLocationDetected} />}
@@ -205,6 +292,16 @@ export default function LocationCard({
             {/* Weather alerts section */}
             {alerts && alerts.length > 0 && <WeatherAlert alerts={alerts} locationName={location.name} />}
 
+            {weatherData?._notice && (
+              <div className="bg-yellow-500/20 backdrop-blur-md rounded-lg p-2 xs:p-3 border border-yellow-500/30 mb-2 xs:mb-3">
+                <div className="flex items-center text-yellow-500 mb-1">
+                  <AlertTriangle className="h-3 w-3 xs:h-4 xs:w-4 mr-1 xs:mr-2" />
+                  <h3 className="font-medium text-xs xs:text-sm">Weather API Notice</h3>
+                </div>
+                <p className="text-[10px] xs:text-xs text-[#d5bdaf]">{weatherData._notice}</p>
+              </div>
+            )}
+
             {/* Weather data display */}
             {hasError ? (
               <div className="bg-black/60 backdrop-blur-md rounded-lg p-3 xs:p-4 border border-red-500/30 mb-3 xs:mb-4">
@@ -219,29 +316,31 @@ export default function LocationCard({
             ) : (
               weatherData?.current && (
                 <>
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 xs:gap-3 sm:gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-1.5 xs:gap-2 sm:gap-3 md:gap-4">
                     <div>
-                      <h2 className="text-xl xs:text-2xl sm:text-3xl font-bold text-[#8B4513] line-clamp-2">
+                      <h2 className="text-lg xs:text-xl sm:text-2xl md:text-3xl font-bold text-[#8B4513] line-clamp-2">
                         {location.name}
                       </h2>
                       <div className="flex items-center text-[#d5bdaf]">
-                        <MapPin className="h-3 w-3 mr-1 text-[#8B4513]" />
-                        <span className="text-xs xs:text-sm">
+                        <MapPin className="h-2.5 w-2.5 xs:h-3 xs:w-3 mr-0.5 xs:mr-1 text-[#8B4513]" />
+                        <span className="text-[10px] xs:text-xs sm:text-sm">
                           {location.country}, {location.continent}
                         </span>
                       </div>
                     </div>
 
                     {weatherData?.current && (
-                      <div className="flex items-center bg-black/60 backdrop-blur-md rounded-lg p-2 shadow-lg border border-[#3c2a21]/30 self-start">
-                        <div className="w-8 h-8 xs:w-10 xs:h-10 sm:w-12 sm:h-12 mr-2 relative">
+                      <div className="flex items-center bg-black/60 backdrop-blur-md rounded-lg p-1.5 xs:p-2 shadow-lg border border-[#3c2a21]/30 self-start">
+                        <div className="w-6 h-6 xs:w-8 xs:h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 mr-1.5 xs:mr-2 relative">
                           <WeatherAnimation condition={weatherData.current.condition.text} isDay={isDay} />
                         </div>
                         <div>
-                          <div className="text-lg xs:text-xl sm:text-2xl font-bold text-[#d5bdaf]">
+                          <div className="text-base xs:text-lg sm:text-xl md:text-2xl font-bold text-[#d5bdaf]">
                             {weatherData.current.temp_c}°C
                           </div>
-                          <div className="text-xs text-[#8B4513]">{weatherData.current.condition.text}</div>
+                          <div className="text-[10px] xs:text-xs text-[#8B4513]">
+                            {weatherData.current.condition.text}
+                          </div>
                         </div>
                       </div>
                     )}
@@ -249,100 +348,16 @@ export default function LocationCard({
 
                   <p className="text-xs xs:text-sm text-[#d5bdaf] line-clamp-3">{location.description}</p>
 
-                  {/* Weather recommendation */}
-                  {weatherData?.current && <WeatherRecommendation weather={weatherData} />}
-
-                  {/* Main weather stats */}
-                  {weatherData?.current && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      <div className="flex items-center bg-black/50 backdrop-blur-md rounded-lg p-2 border border-[#3c2a21]/30">
-                        <Wind className="h-4 w-4 mr-2 text-[#8B4513]" />
-                        <div>
-                          <div className="text-xs text-[#8B4513]">Wind</div>
-                          <div className="text-xs xs:text-sm text-[#d5bdaf]">{weatherData.current.wind_kph} km/h</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center bg-black/50 backdrop-blur-md rounded-lg p-2 border border-[#3c2a21]/30">
-                        <Droplets className="h-4 w-4 mr-2 text-[#8B4513]" />
-                        <div>
-                          <div className="text-xs text-[#8B4513]">Humidity</div>
-                          <div className="text-xs xs:text-sm text-[#d5bdaf]">{weatherData.current.humidity}%</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center bg-black/50 backdrop-blur-md rounded-lg p-2 border border-[#3c2a21]/30">
-                        <Thermometer className="h-4 w-4 mr-2 text-[#8B4513]" />
-                        <div>
-                          <div className="text-xs text-[#8B4513]">Feels Like</div>
-                          <div className="text-xs xs:text-sm text-[#d5bdaf]">{weatherData.current.feelslike_c}°C</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center bg-black/50 backdrop-blur-md rounded-lg p-2 border border-[#3c2a21]/30">
-                        <Cloud className="h-4 w-4 mr-2 text-[#8B4513]" />
-                        <div>
-                          <div className="text-xs text-[#8B4513]">Cloud</div>
-                          <div className="text-xs xs:text-sm text-[#d5bdaf]">{weatherData.current.cloud}%</div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* NEW FEATURE: UV Map */}
-                  {weatherData?.current && weatherData?.location && (
-                    <UVMap
-                      uvIndex={weatherData.current.uv}
-                      lat={weatherData.location.lat}
-                      lon={weatherData.location.lon}
-                    />
-                  )}
-
-                  {/* NEW FEATURE: Hourly Forecast Animation */}
-                  {forecast && forecast.forecast && (
-                    <HourlyForecastAnimation hourlyData={forecast.forecast.forecastday[0].hour} metric="temp" />
-                  )}
-
-                  {/* Air Quality section if available */}
-                  {airQuality && <AirQuality aqi={airQuality} />}
-
-                  {/* NEW FEATURE: Weather Timeline */}
-                  {forecast && <WeatherTimeline forecastData={forecast} />}
-
-                  {/* NEW FEATURE: Weather Impact News */}
-                  <WeatherImpactNews locationName={location.name} />
-
-                  {/* Weather Forecast Section */}
-                  {weatherData?.current && (
-                    <div>
-                      <button
-                        onClick={toggleForecast}
-                        className="flex items-center justify-center w-full py-1.5 xs:py-2 bg-black/30 backdrop-blur-md rounded-lg border border-[#3c2a21]/30 text-[#d5bdaf] hover:bg-[#3c2a21]/30 transition-colors text-xs xs:text-sm"
-                      >
-                        {loadingForecast ? (
-                          <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
-                            className="mr-2"
-                          >
-                            <RefreshCw className="h-3 w-3 xs:h-4 xs:w-4" />
-                          </motion.div>
-                        ) : (
-                          <Calendar className="h-3 w-3 xs:h-4 xs:w-4 mr-2" />
-                        )}
-                        <span>{showForecast ? "Hide Forecast" : "Show 7-Day Forecast"}</span>
-                      </button>
-
-                      {showForecast && forecast && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.3 }}
-                          className="mt-3"
-                        >
-                          <WeatherForecast forecast={forecast} locationName={location.name} />
-                        </motion.div>
-                      )}
-                    </div>
-                  )}
+                  {/* Replace all the existing widgets with the SwipeableWidgets component */}
+                  <div className="mt-4">
+                    {getWidgets().length > 0 && (
+                      <SwipeableWidgets
+                        widgets={getWidgets()}
+                        activeIndex={activeWidgetIndex}
+                        setActiveIndex={setActiveWidgetIndex}
+                      />
+                    )}
+                  </div>
                 </>
               )
             )}
@@ -350,16 +365,27 @@ export default function LocationCard({
             {/* Show more/less button */}
             <button
               onClick={() => setShowMore(!showMore)}
-              className="flex items-center justify-center w-full py-1.5 xs:py-2 bg-black/30 backdrop-blur-md rounded-lg border border-[#3c2a21]/30 text-[#d5bdaf] hover:bg-[#3c2a21]/30 transition-colors mt-3 xs:mt-4 text-xs xs:text-sm"
+              className="flex items-center justify-center w-full py-1 xs:py-1.5 sm:py-2 bg-black/30 backdrop-blur-md rounded-lg border border-[#3c2a21]/30 text-[#d5bdaf] hover:bg-[#3c2a21]/30 transition-colors mt-2 xs:mt-3 sm:mt-4 text-[10px] xs:text-xs sm:text-sm"
             >
-              {showMore ? "Show Less" : "Show More Features"}
+              {showMore ? (
+                <>
+                  <ChevronUp className="h-2.5 w-2.5 xs:h-3 xs:w-3 sm:h-4 sm:w-4 mr-1 xs:mr-1.5" />
+                  Show Less
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-2.5 w-2.5 xs:h-3 xs:w-3 sm:h-4 sm:w-4 mr-1 xs:mr-1.5" />
+                  Show More Features
+                </>
+              )}
             </button>
 
             {/* Advanced features (shown when "Show More" is clicked) */}
             {showMore && (
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.5 }}
                 className="space-y-3 xs:space-y-4"
               >
@@ -378,13 +404,13 @@ export default function LocationCard({
               </motion.div>
             )}
 
-            <div className="flex justify-center space-x-2 pt-2">
+            <div className="flex justify-center space-x-1.5 xs:space-x-2 pt-1.5 xs:pt-2">
               {!isFirst && (
                 <button
                   onClick={onPrevious}
-                  className="flex items-center justify-center w-8 h-8 xs:w-9 xs:h-9 sm:w-10 sm:h-10 rounded-full bg-[#8B4513] text-white cursor-pointer"
+                  className="flex items-center justify-center w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full bg-[#8B4513] text-white cursor-pointer"
                 >
-                  <ChevronUp className="h-4 w-4" />
+                  <ChevronUp className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4" />
                 </button>
               )}
 
@@ -394,20 +420,20 @@ export default function LocationCard({
               {!isLast ? (
                 <button
                   onClick={onNext}
-                  className="flex items-center justify-center w-8 h-8 xs:w-9 xs:h-9 sm:w-10 sm:h-10 rounded-full bg-[#8B4513] text-white cursor-pointer"
+                  className="flex items-center justify-center w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full bg-[#8B4513] text-white cursor-pointer"
                 >
-                  <ChevronDown className="h-4 w-4" />
+                  <ChevronDown className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4" />
                 </button>
               ) : isLoading ? (
                 <button
-                  className="flex items-center justify-center w-8 h-8 xs:w-9 xs:h-9 sm:w-10 sm:h-10 rounded-full bg-[#8B4513] text-white"
+                  className="flex items-center justify-center w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 rounded-full bg-[#8B4513] text-white"
                   disabled
                 >
                   <motion.div
                     animate={{ rotate: 360 }}
                     transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
                   >
-                    <RefreshCw className="h-4 w-4" />
+                    <RefreshCw className="h-3 w-3 xs:h-3.5 xs:w-3.5 sm:h-4 sm:w-4" />
                   </motion.div>
                 </button>
               ) : null}

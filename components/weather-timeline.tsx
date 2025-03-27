@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import { motion } from "framer-motion"
 import { ChevronLeft, ChevronRight, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import CollapsibleWidget from "@/components/collapsible-widget"
 
 interface WeatherTimelineProps {
   forecastData: any
@@ -55,12 +56,10 @@ export default function WeatherTimeline({ forecastData }: WeatherTimelineProps) 
   }
 
   return (
-    <div className="bg-black/30 backdrop-blur-md rounded-lg p-3 border border-[#3c2a21]/20">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center">
-          <Calendar className="h-4 w-4 mr-2 text-[#8B4513]" />
-          <div className="text-xs text-[#8B4513]">7-Day Weather Timeline</div>
-        </div>
+    <CollapsibleWidget
+      title="7-Day Weather Timeline"
+      icon={<Calendar className="h-3 w-3 xs:h-4 xs:w-4" />}
+      badge={
         <div className="flex items-center space-x-1">
           <Button
             variant="ghost"
@@ -81,11 +80,11 @@ export default function WeatherTimeline({ forecastData }: WeatherTimelineProps) 
             <ChevronRight className="h-3 w-3" />
           </Button>
         </div>
-      </div>
-
+      }
+    >
       <div
         ref={timelineRef}
-        className="overflow-x-auto scrollbar-hide"
+        className="overflow-x-auto scrollbar-hide enhanced-scrollbar"
         onScroll={() => {
           setScrollPosition(timelineRef.current?.scrollLeft || 0)
           checkScrollPosition()
@@ -112,44 +111,44 @@ export default function WeatherTimeline({ forecastData }: WeatherTimelineProps) 
             const minTempHeight = ((minTemp - tempRange.min) / (tempRange.max - tempRange.min)) * maxHeight
 
             return (
-              <div key={index} className="flex flex-col items-center mx-2 w-16">
-                <div className="text-xs text-[#d5bdaf] mb-1">{dayName}</div>
-                <div className="text-xs font-medium text-[#d5bdaf] mb-2">{date}</div>
+              <div key={index} className="flex flex-col items-center mx-1.5 xs:mx-2 w-12 xs:w-14">
+                <div className="text-[10px] text-[#d5bdaf] mb-0.5">{dayName}</div>
+                <div className="text-[10px] font-medium text-[#d5bdaf] mb-1">{date}</div>
 
-                <div className="flex items-end justify-center h-16 mb-1">
+                <div className="flex items-end justify-center h-14 mb-0.5">
                   <div className="flex flex-col items-center">
-                    <span className="text-xs text-[#d5bdaf] mb-1">{maxTemp}°</span>
+                    <span className="text-[10px] text-[#d5bdaf] mb-0.5">{maxTemp}°</span>
                     <motion.div
                       initial={{ height: 0 }}
                       animate={{ height: maxTempHeight }}
                       transition={{ duration: 1, delay: index * 0.1 }}
-                      className="w-4 bg-gradient-to-t from-[#8B4513]/50 to-[#8B4513] rounded-t-sm"
+                      className="w-3 bg-gradient-to-t from-[#8B4513]/50 to-[#8B4513] rounded-t-sm"
                     />
                   </div>
                   <div className="mx-0.5 h-full flex items-end">
                     <div className="w-px h-full bg-[#3c2a21]/30" />
                   </div>
                   <div className="flex flex-col items-center">
-                    <span className="text-xs text-[#d5bdaf] mb-1">{minTemp}°</span>
+                    <span className="text-[10px] text-[#d5bdaf] mb-0.5">{minTemp}°</span>
                     <motion.div
                       initial={{ height: 0 }}
                       animate={{ height: minTempHeight }}
                       transition={{ duration: 1, delay: index * 0.1 }}
-                      className="w-4 bg-gradient-to-t from-[#d5bdaf]/30 to-[#d5bdaf]/70 rounded-t-sm"
+                      className="w-3 bg-gradient-to-t from-[#d5bdaf]/30 to-[#d5bdaf]/70 rounded-t-sm"
                     />
                   </div>
                 </div>
 
-                <div className="w-10 h-10 flex items-center justify-center">
+                <div className="w-7 h-7 xs:w-8 xs:h-8 flex items-center justify-center">
                   <img
                     src={day.day.condition.icon || "/placeholder.svg"}
                     alt={day.day.condition.text}
-                    width={30}
-                    height={30}
-                    className="w-8 h-8"
+                    width={24}
+                    height={24}
+                    className="w-6 h-6"
                   />
                 </div>
-                <div className="text-xs text-[#d5bdaf]/70 text-center line-clamp-1 w-full">
+                <div className="text-[10px] text-[#d5bdaf]/70 text-center line-clamp-1 w-full">
                   {day.day.condition.text}
                 </div>
               </div>
@@ -157,7 +156,7 @@ export default function WeatherTimeline({ forecastData }: WeatherTimelineProps) 
           })}
         </div>
       </div>
-    </div>
+    </CollapsibleWidget>
   )
 }
 

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import CollapsibleWidget from "@/components/collapsible-widget"
 
 interface CrowdsourcedWeatherProps {
   locationName: string
@@ -112,22 +113,20 @@ export default function CrowdsourcedWeather({ locationName }: CrowdsourcedWeathe
   ]
 
   return (
-    <div className="bg-black/30 backdrop-blur-md rounded-lg p-3 border border-[#3c2a21]/20">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center">
-          <Users className="h-4 w-4 mr-2 text-[#8B4513]" />
-          <div className="text-xs text-[#8B4513]">Community Weather Reports</div>
-        </div>
+    <CollapsibleWidget
+      title="Community Weather Reports"
+      icon={<Users className="h-3 w-3 xs:h-4 xs:w-4" />}
+      badge={
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setIsOpen(!isOpen)}
-          className="h-6 px-2 rounded-full bg-[#3c2a21]/50 text-[#d5bdaf] hover:bg-[#8B4513]/70 text-xs"
+          className="h-5 px-2 rounded-full bg-[#3c2a21]/50 text-[#d5bdaf] hover:bg-[#8B4513]/70 text-[10px] xs:text-xs"
         >
           {isOpen ? "Cancel" : "Add Report"}
         </Button>
-      </div>
-
+      }
+    >
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -135,7 +134,7 @@ export default function CrowdsourcedWeather({ locationName }: CrowdsourcedWeathe
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.3 }}
-            className="bg-black/20 rounded-lg p-3 mb-3 border border-[#3c2a21]/20"
+            className="bg-black/20 rounded-lg p-2 xs:p-3 mb-2 xs:mb-3 border border-[#3c2a21]/20"
           >
             <div className="text-xs text-[#d5bdaf] mb-2">What's the weather like in {locationName}?</div>
 
@@ -217,9 +216,11 @@ export default function CrowdsourcedWeather({ locationName }: CrowdsourcedWeathe
       </AnimatePresence>
 
       {reports.length === 0 ? (
-        <div className="text-xs text-[#d5bdaf]/70 py-2 text-center">No community reports yet for {locationName}</div>
+        <div className="text-[10px] xs:text-xs text-[#d5bdaf]/70 py-2 text-center">
+          No community reports yet for {locationName}
+        </div>
       ) : (
-        <div className="space-y-2 max-h-40 overflow-y-auto">
+        <div className="space-y-2 max-h-36 overflow-y-auto">
           {reports.map((report, index) => {
             const time = new Date(report.timestamp)
             const timeAgo = getTimeAgo(time)
@@ -255,7 +256,7 @@ export default function CrowdsourcedWeather({ locationName }: CrowdsourcedWeathe
           })}
         </div>
       )}
-    </div>
+    </CollapsibleWidget>
   )
 }
 

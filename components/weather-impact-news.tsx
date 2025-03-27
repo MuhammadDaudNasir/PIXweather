@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Newspaper, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import CollapsibleWidget from "@/components/collapsible-widget"
 
 interface WeatherImpactNewsProps {
   locationName: string
@@ -77,38 +78,36 @@ export default function WeatherImpactNews({ locationName }: WeatherImpactNewsPro
   }
 
   return (
-    <div className="bg-black/30 backdrop-blur-md rounded-lg p-3 border border-[#3c2a21]/20">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center">
-          <Newspaper className="h-4 w-4 mr-2 text-[#8B4513]" />
-          <div className="text-xs text-[#8B4513]">Weather News</div>
-        </div>
-        {news.length > 1 && (
+    <CollapsibleWidget
+      title="Weather News"
+      icon={<Newspaper className="h-3 w-3 xs:h-4 xs:w-4" />}
+      badge={
+        news.length > 1 ? (
           <div className="text-xs text-[#d5bdaf]">
             {currentIndex + 1} of {news.length}
           </div>
-        )}
-      </div>
-
+        ) : null
+      }
+    >
       <AnimatePresence mode="wait">
         <motion.div
           key={currentArticle.title}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.5 }}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.3 }}
         >
-          <h4 className="text-sm font-medium text-[#d5bdaf] line-clamp-2 mb-1">{currentArticle.title}</h4>
-          <p className="text-xs text-[#d5bdaf]/70 line-clamp-2 mb-2">{currentArticle.description}</p>
+          <h4 className="text-xs font-medium text-[#d5bdaf] line-clamp-2 mb-1">{currentArticle.title}</h4>
+          <p className="text-[10px] xs:text-xs text-[#d5bdaf]/70 line-clamp-2 mb-2">{currentArticle.description}</p>
           <div className="flex items-center justify-between">
-            <span className="text-xs text-[#8B4513]">{formatDate(currentArticle.publishedAt)}</span>
+            <span className="text-[10px] xs:text-xs text-[#8B4513]">{formatDate(currentArticle.publishedAt)}</span>
             <a
               href={currentArticle.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-[#8B4513] hover:text-[#d5bdaf] flex items-center transition-colors"
+              className="text-[10px] xs:text-xs text-[#8B4513] hover:text-[#d5bdaf] flex items-center transition-colors"
             >
-              Read more <ExternalLink className="ml-1 h-3 w-3" />
+              Read more <ExternalLink className="ml-1 h-2 w-2 xs:h-3 xs:w-3" />
             </a>
           </div>
         </motion.div>
@@ -119,13 +118,13 @@ export default function WeatherImpactNews({ locationName }: WeatherImpactNewsPro
           <Button
             variant="ghost"
             size="sm"
-            className="text-xs text-[#8B4513] hover:text-[#d5bdaf] hover:bg-[#3c2a21]/50"
+            className="text-[10px] xs:text-xs text-[#8B4513] hover:text-[#d5bdaf] hover:bg-[#3c2a21]/50 h-6 xs:h-7 px-2"
           >
             View All Weather News
           </Button>
         </Link>
       </div>
-    </div>
+    </CollapsibleWidget>
   )
 }
 

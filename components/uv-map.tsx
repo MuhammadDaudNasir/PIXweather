@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Sun, AlertTriangle, Info } from "lucide-react"
+import CollapsibleWidget from "@/components/collapsible-widget"
 
 interface UVMapProps {
   uvIndex: number
@@ -18,34 +19,67 @@ export default function UVMap({ uvIndex, lat, lon }: UVMapProps) {
     const fetchUVForecast = async () => {
       try {
         setLoading(true)
-        // In a real app, you would fetch this from a UV forecast API
-        // For demo purposes, we'll generate mock data based on the current UV index
 
-        const mockForecast = Array.from({ length: 24 }, (_, i) => {
-          // Create a sine wave pattern for the day
-          const hour = i
-          const baseUV = uvIndex
-
-          // UV peaks at noon (hour 12)
-          const hourFactor = Math.sin((hour / 24) * Math.PI)
-          const calculatedUV = Math.max(0, Math.round((baseUV * hourFactor + Number.EPSILON) * 10) / 10)
-
-          return {
-            hour,
-            uv: calculatedUV,
-            time: new Date(new Date().setHours(hour, 0, 0, 0)).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-          }
+        // Use the OpenUV API for real data
+        const response = await fetch(`https://api.openuv.io/api/v1/forecast?lat=${lat}&lng=${lon}`, {
+          headers: {
+            "x-access-token": "openuv-a2y4rm8qj9aue-io",
+          },
         })
 
-        setForecast(mockForecast)
+        if (!response.ok) {
+          throw new Error("Failed to fetch UV forecast")
+        }
+
+        const data = await response.json()
+
+        // Format the data for our chart
+        if (data && data.result) {
+          const formattedForecast = data.result.map((item: any) => {
+            const date = new Date(item.uv_time)
+            return {
+              hour: date.getHours(),
+              uv: item.uv,
+              time: date.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            }
+          })
+
+          setForecast(formattedForecast)
+        } else {
+          // Fallback to mock data if API doesn't return expected format
+          generateMockForecast()
+        }
       } catch (error) {
         console.error("Error fetching UV forecast:", error)
+        // Fallback to mock data on error
+        generateMockForecast()
       } finally {
         setLoading(false)
       }
+    }
+
+    // Helper function to generate mock data as fallback
+    const generateMockForecast = () => {
+      const mockForecast = Array.from({ length: 24 }, (_, i) => {
+        const hour = i
+        const baseUV = uvIndex
+        const hourFactor = Math.sin((hour / 24) * Math.PI)
+        const calculatedUV = Math.max(0, Math.round((baseUV * hourFactor + Number.EPSILON) * 10) / 10)
+
+        return {
+          hour,
+          uv: calculatedUV,
+          time: new Date(new Date().setHours(hour, 0, 0, 0)).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        }
+      })
+
+      setForecast(mockForecast)
     }
 
     if (uvIndex !== undefined) {
@@ -98,28 +132,26 @@ export default function UVMap({ uvIndex, lat, lon }: UVMapProps) {
   }
 
   return (
-    <div className="bg-black/30 backdrop-blur-md rounded-lg p-2 xs:p-3 border border-[#3c2a21]/20">
-      <div className="flex items-center justify-between mb-2 xs:mb-3">
-        <div className="flex items-center">
-          <Sun className="h-3 w-3 xs:h-4 xs:w-4 mr-1 xs:mr-2 text-[#8B4513]" />
-          <div className="text-xs text-[#8B4513]">UV Index Map</div>
-        </div>
+    <CollapsibleWidget
+      title="UV Index Map"
+      icon={<Sun className="h-3 w-3 xs:h-4 xs:w-4" />}
+      badge={
         <div
           className={`text-xs font-medium px-1.5 xs:px-2 py-0.5 rounded-full ${uvInfo.textColor} bg-opacity-20`}
           style={{ backgroundColor: `${uvInfo.color}30` }}
         >
           {uvInfo.level} ({uvIndex})
         </div>
-      </div>
-
+      }
+    >
       {/* UV Gauge */}
-      <div className="relative h-6 xs:h-8 mb-3 xs:mb-4 bg-gradient-to-r from-green-500 via-yellow-500 via-orange-500 to-purple-500 rounded-full overflow-hidden">
+      <div className="relative h-4 xs:h-5 sm:h-6 mb-2 xs:mb-3 sm:mb-4 bg-gradient-to-r from-green-500 via-yellow-500 via-orange-500 to-purple-500 rounded-full overflow-hidden">
         <div className="absolute inset-0 flex">
           {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((level) => (
             <div key={level} className="flex-1 border-r border-black/10 relative">
               {level % 3 === 0 && (
-                <div className="absolute -bottom-4 xs:-bottom-5 w-full text-center">
-                  <span className="text-[10px] xs:text-xs text-[#d5bdaf]/70">{level}</span>
+                <div className="absolute -bottom-3 xs:-bottom-4 w-full text-center">
+                  <span className="text-[8px] xs:text-[10px] text-[#d5bdaf]/70">{level}</span>
                 </div>
               )}
             </div>
@@ -128,29 +160,29 @@ export default function UVMap({ uvIndex, lat, lon }: UVMapProps) {
 
         {/* UV Indicator */}
         <motion.div
-          className="absolute top-0 w-3 xs:w-4 h-6 xs:h-8 bg-white rounded-full shadow-lg z-10"
+          className="absolute top-0 w-2 xs:w-2.5 sm:w-3 h-4 xs:h-5 sm:h-6 bg-white rounded-full shadow-lg z-10"
           style={{
-            left: `calc(${Math.min(uvIndex / 12, 1) * 100}% - 6px)`,
+            left: `calc(${Math.min(uvIndex / 12, 1) * 100}% - 4px)`,
           }}
-          initial={{ y: -20, opacity: 0 }}
+          initial={{ y: -10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         />
       </div>
 
       {/* UV Forecast Chart - Simplified for smaller screens */}
-      <div className="relative h-24 xs:h-28 sm:h-32 mb-2">
+      <div className="relative h-16 xs:h-20 sm:h-24 mb-2">
         <div className="absolute inset-x-0 bottom-0 h-px bg-[#3c2a21]/30" />
 
         {/* Y-axis labels */}
-        <div className="absolute left-0 top-0 bottom-0 w-4 xs:w-6 flex flex-col justify-between">
-          <span className="text-[8px] xs:text-[10px] text-[#d5bdaf]/70">12</span>
-          <span className="text-[8px] xs:text-[10px] text-[#d5bdaf]/70">6</span>
-          <span className="text-[8px] xs:text-[10px] text-[#d5bdaf]/70">0</span>
+        <div className="absolute left-0 top-0 bottom-0 w-3 xs:w-4 sm:w-5 flex flex-col justify-between">
+          <span className="text-[6px] xs:text-[8px] sm:text-[10px] text-[#d5bdaf]/70">12</span>
+          <span className="text-[6px] xs:text-[8px] sm:text-[10px] text-[#d5bdaf]/70">6</span>
+          <span className="text-[6px] xs:text-[8px] sm:text-[10px] text-[#d5bdaf]/70">0</span>
         </div>
 
         {/* Chart */}
-        <div className="ml-4 xs:ml-6 h-full flex">
+        <div className="ml-3 xs:ml-4 sm:ml-5 h-full flex">
           {forecast.map((item, index) => {
             const height = (item.uv / 12) * 100
             const uvInfo = getUVInfo(item.uv)
@@ -158,12 +190,12 @@ export default function UVMap({ uvIndex, lat, lon }: UVMapProps) {
             return (
               <div key={index} className="flex-1 flex flex-col items-center justify-end">
                 {index % 6 === 0 && (
-                  <div className="absolute bottom-[-16px] xs:bottom-[-20px] text-[8px] xs:text-[10px] text-[#d5bdaf]/70">
+                  <div className="absolute bottom-[-12px] xs:bottom-[-14px] sm:bottom-[-16px] text-[6px] xs:text-[8px] sm:text-[10px] text-[#d5bdaf]/70">
                     {item.time}
                   </div>
                 )}
                 <motion.div
-                  className="w-1 xs:w-1.5 sm:w-2 rounded-t-sm"
+                  className="w-0.5 xs:w-1 sm:w-1.5 rounded-t-sm"
                   style={{
                     height: `${height}%`,
                     backgroundColor: uvInfo.color,
@@ -203,7 +235,7 @@ export default function UVMap({ uvIndex, lat, lon }: UVMapProps) {
           </p>
         </div>
       </div>
-    </div>
+    </CollapsibleWidget>
   )
 }
 
