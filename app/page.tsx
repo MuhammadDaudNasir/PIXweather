@@ -2,7 +2,19 @@
 
 import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Search, ArrowDown, Info, Share2, Newspaper, RefreshCw, Heart } from "lucide-react"
+import {
+  Search,
+  ArrowDown,
+  Info,
+  Share2,
+  Newspaper,
+  RefreshCw,
+  Heart,
+  Sparkles,
+  MapPin,
+  Sun,
+  Calendar,
+} from "lucide-react"
 import { Input } from "@/components/ui/input"
 import LocationCard from "@/components/location-card"
 import LoadingState from "@/components/loading-state"
@@ -13,6 +25,12 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import AnimatedTitle from "@/components/animated-title"
 import Image from "next/image"
+
+// Add these imports at the top
+import SwipeableWidgets from "@/components/swipeable-widgets"
+import UVMap from "@/components/uv-map"
+import WeatherImpactNews from "@/components/weather-impact-news"
+import WeatherForecast from "@/components/weather-forecast"
 
 // Add this function at the top of the file, outside the component
 function delay(ms) {
@@ -33,6 +51,9 @@ export default function HomePage() {
   const [detectedLocation, setDetectedLocation] = useState(null)
   const containerRef = useRef(null)
   const loadMoreThreshold = 2 // Load more when user is this many items from the end
+
+  // Add this state after the other useState declarations
+  const [activeWidgetIndex, setActiveWidgetIndex] = useState(0)
 
   // Add these refs for scroll handling
   const scrollTimeoutRef = useRef(null)
@@ -72,26 +93,26 @@ export default function HomePage() {
         try {
           const weatherResponse = await fetch(`/api/weather?query=${location.name}`)
 
-          // Handle rate limiting
-          if (weatherResponse.status === 429) {
-            console.log("Rate limited, waiting before retry...")
-            await delay(2000) // Wait 2 seconds before retry
-            continue // Skip this iteration and try the next location
-          }
-
+          // Even if we get a 200 response, the API might have returned an error with mock data
           const weatherData = await weatherResponse.json()
-
-          // If there's an error in the response, log it but continue
-          if (weatherData.error) {
-            console.error(`Error fetching weather for ${location.name}:`, weatherData.error)
-            continue
-          }
 
           // Update weather data for this location
           setWeatherData((prev) => ({
             ...prev,
             [location.name]: weatherData,
           }))
+
+          // If there's a notice about mock data, show a toast notification (only once)
+          if (weatherData._notice && !sessionStorage.getItem("mockDataNoticeShown")) {
+            sessionStorage.setItem("mockDataNoticeShown", "true")
+            // If you have a toast component, you can use it here
+            // toast({
+            //   title: "Weather API Notice",
+            //   description: weatherData._notice,
+            //   variant: "default",
+            // })
+            console.warn(weatherData._notice)
+          }
 
           // Fetch images for this location
           const imagesResponse = await fetch(`/api/images?query=${location.name}`)
@@ -370,6 +391,118 @@ export default function HomePage() {
     }
   }, [currentIndex, locations.length, loading])
 
+  // Add this function before the return statement
+  const getWidgets = (location) => {
+    const currentWeather = weatherData[location?.name]
+
+    if (!currentWeather) return []
+
+    return [
+      {
+        id: "location-info",
+        title: "Location Information",
+        icon: <MapPin className="h-4 w-4 mr-2" />,
+        component: (
+          <div className="p-4 bg-black/20 rounded-b-lg">
+            <div className="flex flex-col space-y-4">
+              <div className="flex items-center space-x-3">
+                <div className="h-12 w-12 bg-[#8B4513]/20 rounded-full flex items-center justify-center">
+                  <MapPin className="h-6 w-6 text-[#8B4513]" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-[#d5bdaf]">{currentWeather.location?.name}</h3>
+                  <p className="text-sm text-[#d5bdaf]/70">{currentWeather.location?.country}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-black/30 p-3 rounded-lg">
+                  <p className="text-xs text-[#8B4513]">Region</p>
+                  <p className="text-sm text-[#d5bdaf]">{currentWeather.location?.region || "N/A"}</p>
+                </div>
+                <div className="bg-black/30 p-3 rounded-lg">
+                  <p className="text-xs text-[#8B4513]">Local Time</p>
+                  <p className="text-sm text-[#d5bdaf]">{currentWeather.location?.localtime || "N/A"}</p>
+                </div>
+                <div className="bg-black/30 p-3 rounded-lg">
+                  <p className="text-xs text-[#8B4513]">Latitude</p>
+                  <p className="text-sm text-[#d5bdaf]">{currentWeather.location?.lat || "N/A"}</p>
+                </div>
+                <div className="bg-black/30 p-3 rounded-lg">
+                  <p className="text-xs text-[#8B4513]">Longitude</p>
+                  <p className="text-sm text-[#d5bdaf]">{currentWeather.location?.lon || "N/A"}</p>
+                </div>
+              </div>
+
+              <div className="bg-black/30 p-3 rounded-lg">
+                <p className="text-xs text-[#8B4513] mb-1">Current Weather</p>
+                <div className="flex items-center">
+                  {currentWeather.current && (
+                    <>
+                      <img
+                        src={currentWeather.current.condition?.icon || "/placeholder.svg"}
+                        alt={currentWeather.current.condition?.text || "Weather"}
+                        className="w-10 h-10 mr-3"
+                      />
+                      <div>
+                        <p className="text-lg font-bold text-[#d5bdaf]">{currentWeather.current.temp_c}°C</p>
+                        <p className="text-sm text-[#d5bdaf]/70">{currentWeather.current.condition?.text}</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <p className="text-xs text-[#d5bdaf]/50 text-center">Swipe left or right to see more information</p>
+            </div>
+          </div>
+        ),
+      },
+      {
+        id: "uv-forecast",
+        title: "UV Forecast",
+        icon: <Sun className="h-4 w-4 mr-2" />,
+        component:
+          currentWeather && currentWeather.current && currentWeather.location ? (
+            <UVMap
+              uvIndex={currentWeather.current.uv}
+              lat={currentWeather.location.lat}
+              lon={currentWeather.location.lon}
+            />
+          ) : (
+            <div className="flex items-center justify-center h-64 bg-black/20 rounded-lg">
+              <RefreshCw className="h-6 w-6 text-[#8B4513] animate-spin" />
+            </div>
+          ),
+      },
+      {
+        id: "weather-news",
+        title: "Weather News",
+        icon: <Newspaper className="h-4 w-4 mr-2" />,
+        component: currentWeather ? (
+          <WeatherImpactNews locationName={currentWeather.location?.name || location?.name} />
+        ) : (
+          <div className="flex items-center justify-center h-64 bg-black/20 rounded-lg">
+            <RefreshCw className="h-6 w-6 text-[#8B4513] animate-spin" />
+          </div>
+        ),
+      },
+      {
+        id: "forecast",
+        title: "7-Day Forecast",
+        icon: <Calendar className="h-4 w-4 mr-2" />,
+        component:
+          currentWeather && currentWeather.forecast ? (
+            <WeatherForecast forecast={currentWeather} locationName={currentWeather.location?.name || location?.name} />
+          ) : (
+            <div className="flex items-center justify-center h-64 bg-black/20 rounded-lg">
+              <RefreshCw className="h-6 w-6 text-[#8B4513] animate-spin" />
+            </div>
+          ),
+      },
+    ]
+  }
+
   return (
     <div ref={containerRef} className="min-h-screen bg-black text-[#d5bdaf] overflow-hidden">
       {/* Header */}
@@ -420,6 +553,15 @@ export default function HomePage() {
                 className="rounded-full bg-[#3c2a21] text-[#d5bdaf] hover:bg-[#8B4513] h-7 w-7 xs:h-8 xs:w-8 sm:h-9 sm:w-9"
               >
                 <Newspaper className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              </Button>
+            </Link>
+            <Link href="/ai">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full bg-[#3c2a21] text-[#d5bdaf] hover:bg-[#8B4513] h-7 w-7 xs:h-8 xs:w-8 sm:h-9 sm:w-9"
+              >
+                <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
             </Link>
             <Button
@@ -514,13 +656,27 @@ export default function HomePage() {
               {loadingMore && (
                 <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 z-20">
                   <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: [0.9, 1.1, 1] }}
+                    transition={{
+                      duration: 0.5,
+                      scale: {
+                        duration: 1.5,
+                        repeat: Number.POSITIVE_INFINITY,
+                        repeatType: "reverse",
+                      },
+                    }}
                     className="bg-black/60 backdrop-blur-md rounded-full px-4 py-2 flex items-center"
                   >
                     <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+                      animate={{
+                        rotate: 360,
+                        scale: [1, 1.2, 1],
+                      }}
+                      transition={{
+                        rotate: { duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" },
+                        scale: { duration: 1.5, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" },
+                      }}
                       className="mr-2"
                     >
                       <RefreshCw className="h-4 w-4 text-[#8B4513]" />
@@ -533,26 +689,48 @@ export default function HomePage() {
               {/* Scroll indicator */}
               <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-10">
                 <motion.div
-                  animate={{ y: [0, 10, 0] }}
-                  transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY }}
+                  animate={{
+                    y: [0, 10, 0],
+                    opacity: [0.5, 1, 0.5],
+                  }}
+                  transition={{
+                    duration: 1.5,
+                    repeat: Number.POSITIVE_INFINITY,
+                    ease: "easeInOut",
+                  }}
                 >
-                  <ArrowDown className="h-6 w-6 text-white drop-shadow-lg" />
+                  <ArrowDown className="h-5 w-5 xs:h-6 xs:w-6 text-white drop-shadow-lg" />
                 </motion.div>
               </div>
 
               {/* Page indicator */}
-              <div className="absolute right-4 top-1/2 transform -translate-y-1/2 z-10 flex flex-col gap-2">
+              <div className="absolute right-3 xs:right-4 top-1/2 transform -translate-y-1/2 z-10 flex flex-col gap-1.5 xs:gap-2">
                 {locations.length > 10 ? (
                   // Show simplified indicator for many locations
-                  <div className="bg-black/40 backdrop-blur-md rounded-full px-2 py-1 text-xs text-[#d5bdaf]">
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="bg-black/40 backdrop-blur-md rounded-full px-2 py-1 text-[10px] xs:text-xs text-[#d5bdaf]"
+                  >
                     {currentIndex + 1}/{locations.length}
-                  </div>
+                  </motion.div>
                 ) : (
                   // Show dots for fewer locations
                   locations.map((_, idx) => (
-                    <div
+                    <motion.div
                       key={idx}
-                      className={`w-2 h-2 rounded-full ${currentIndex === idx ? "bg-[#8B4513]" : "bg-white/50"}`}
+                      initial={{ opacity: 0, scale: 0 }}
+                      animate={{
+                        opacity: 1,
+                        scale: 1,
+                        backgroundColor: currentIndex === idx ? "#8B4513" : "rgba(255, 255, 255, 0.5)",
+                      }}
+                      transition={{
+                        duration: 0.3,
+                        delay: idx * 0.05,
+                      }}
+                      className={`w-1.5 h-1.5 xs:w-2 xs:h-2 rounded-full cursor-pointer hover:scale-125 transition-transform`}
                       onClick={() => setCurrentIndex(idx)}
                     />
                   ))
@@ -561,6 +739,13 @@ export default function HomePage() {
             </div>
           )}
         </AnimatePresence>
+        {locations[currentIndex] && weatherData[locations[currentIndex].name] && (
+          <SwipeableWidgets
+            widgets={getWidgets(locations[currentIndex])}
+            activeIndex={activeWidgetIndex}
+            setActiveIndex={setActiveWidgetIndex}
+          />
+        )}
       </main>
 
       {/* Footer */}
