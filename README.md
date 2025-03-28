@@ -106,7 +106,7 @@ Contributions are welcome! However, forking or redistributing this project requi
 
 ## License
 
-This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Aegis License - see the [LICENSE](LICENSE) file for details.
 
 ## Contact
 
